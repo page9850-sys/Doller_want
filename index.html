@@ -3,12 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>달러트래커</title>
+<title>환율트래커</title>
 
-<!-- iOS 홈화면 추가용 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="달러트래커">
+<meta name="apple-mobile-web-app-title" content="환율트래커">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230B1220'/%3E%3Ctext x='50' y='66' font-size='52' text-anchor='middle' fill='%2334D399' font-family='monospace' font-weight='bold'%3E$%3C/text%3E%3C/svg%3E">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230B1220'/%3E%3Ctext x='50' y='66' font-size='52' text-anchor='middle' fill='%2334D399' font-family='monospace' font-weight='bold'%3E$%3C/text%3E%3C/svg%3E">
 
@@ -16,14 +15,8 @@
 
 <style>
   :root{
-    --bg:#0B1220;
-    --bg-elevated:#101B30;
-    --line:#1E2C45;
-    --text:#E7ECF3;
-    --muted:#7C8AA3;
-    --green:#34D399;
-    --orange:#FB923C;
-    --gold:#D4AF6A;
+    --bg:#0B1220; --bg-elevated:#101B30; --line:#1E2C45;
+    --text:#E7ECF3; --muted:#7C8AA3; --green:#34D399; --orange:#FB923C; --gold:#D4AF6A;
     --mono:'SF Mono','JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
     --sans:-apple-system,BlinkMacSystemFont,'Inter','Pretendard',sans-serif;
   }
@@ -32,19 +25,20 @@
     -webkit-font-smoothing:antialiased; overscroll-behavior-y:none;}
   body{padding-bottom:env(safe-area-inset-bottom);}
 
-  header{
-    position:sticky; top:0; z-index:10;
-    padding:calc(env(safe-area-inset-top) + 14px) 18px 12px;
-    background:linear-gradient(180deg,var(--bg) 70%, transparent);
-    border-bottom:1px solid var(--line);
-  }
+  header{position:sticky; top:0; z-index:10; padding:calc(env(safe-area-inset-top) + 14px) 18px 0;
+    background:linear-gradient(180deg,var(--bg) 80%, transparent); border-bottom:1px solid var(--line);}
   .brand{display:flex; align-items:baseline; justify-content:space-between;}
   .brand h1{font-size:15px; font-weight:600; letter-spacing:.02em; margin:0; color:var(--muted);}
   .brand .clock{font-family:var(--mono); font-size:11px; color:var(--muted);}
 
-  .ticker{display:flex; align-items:flex-end; gap:10px; margin-top:10px;}
-  .ticker .rate{font-family:var(--mono); font-size:42px; font-weight:700; letter-spacing:-0.02em; line-height:1;}
-  .ticker .unit{font-size:13px; color:var(--muted); margin-bottom:6px;}
+  .ccy-tabs{display:flex; gap:6px; margin-top:12px;}
+  .ccy-tabs button{flex:1; background:var(--bg-elevated); border:1px solid var(--line); color:var(--muted);
+    border-radius:9px; padding:8px 0; font-family:var(--sans); font-weight:700; font-size:13px;}
+  .ccy-tabs button.active{background:rgba(52,211,153,.14); border-color:var(--green); color:var(--green);}
+
+  .ticker{display:flex; align-items:flex-end; gap:10px; margin:12px 0 12px;}
+  .ticker .rate{font-family:var(--mono); font-size:40px; font-weight:700; letter-spacing:-0.02em; line-height:1;}
+  .ticker .unit{font-size:12px; color:var(--muted); margin-bottom:6px;}
   .delta{font-family:var(--mono); font-size:13px; padding:3px 8px; border-radius:6px; margin-bottom:6px;}
   .delta.up{color:var(--orange); background:rgba(251,146,60,.12);}
   .delta.down{color:var(--green); background:rgba(52,211,153,.12);}
@@ -54,10 +48,9 @@
   .card{background:var(--bg-elevated); border:1px solid var(--line); border-radius:14px; padding:16px;}
   .label{font-size:11px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; margin-bottom:10px;}
 
-  /* 갭 게이지 - 시그니처 요소 */
   .gap-wrap{display:flex; align-items:center; gap:14px;}
   .gap-meter{position:relative; flex:1; height:8px; border-radius:99px; background:var(--line); overflow:hidden;}
-  .gap-fill{position:absolute; top:0; bottom:0; left:50%; border-radius:99px; transition:width .4s ease, left .4s ease;}
+  .gap-fill{position:absolute; top:0; bottom:0; border-radius:99px; transition:width .4s ease, left .4s ease;}
   .gap-fill.favor{background:var(--green);}
   .gap-fill.unfavor{background:var(--orange);}
   .gap-mid{position:absolute; left:50%; top:-4px; bottom:-4px; width:1px; background:var(--muted); opacity:.5;}
@@ -71,7 +64,6 @@
 
   canvas{width:100% !important; height:200px !important;}
 
-  /* 탭 */
   nav.tabs{position:sticky; bottom:0; display:flex; background:var(--bg-elevated);
     border-top:1px solid var(--line); padding:8px 8px calc(env(safe-area-inset-bottom) + 8px);}
   nav.tabs button{flex:1; background:none; border:none; color:var(--muted); font-family:var(--sans);
@@ -79,20 +71,15 @@
   nav.tabs button .ic{font-size:18px;}
   nav.tabs button.active{color:var(--green);}
 
-  .view{display:none;}
-  .view.active{display:block;}
+  .view{display:none;} .view.active{display:block;}
 
-  /* 폼/리스트 */
   .form-row{display:flex; gap:8px; margin-bottom:8px;}
-  input,select{
-    background:var(--bg); border:1px solid var(--line); color:var(--text);
-    border-radius:8px; padding:10px; font-family:var(--mono); font-size:14px; width:100%;
-  }
-  button.primary{
-    width:100%; padding:12px; background:var(--green); color:#06281D; font-weight:700;
-    border:none; border-radius:10px; font-size:14px; margin-top:6px;
-  }
+  input,select{background:var(--bg); border:1px solid var(--line); color:var(--text);
+    border-radius:8px; padding:10px; font-family:var(--mono); font-size:14px; width:100%;}
+  button.primary{width:100%; padding:12px; background:var(--green); color:#06281D; font-weight:700;
+    border:none; border-radius:10px; font-size:14px; margin-top:6px;}
   button.ghost{background:transparent; border:1px solid var(--line); color:var(--muted); border-radius:8px; padding:6px 10px; font-size:12px;}
+  button.fillrate{background:transparent; border:1px solid var(--line); color:var(--gold); border-radius:8px; padding:0 10px; font-family:var(--mono); font-size:12px; white-space:nowrap;}
 
   table{width:100%; border-collapse:collapse; font-size:13px;}
   th{text-align:left; color:var(--muted); font-size:11px; padding:6px 4px; border-bottom:1px solid var(--line);}
@@ -101,12 +88,12 @@
 
   .summary-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
   .summary-grid .stat{background:var(--bg); border-radius:10px; padding:12px;}
-  .summary-grid .stat .v{font-family:var(--mono); font-size:18px; font-weight:700;}
+  .summary-grid .stat .v{font-family:var(--mono); font-size:17px; font-weight:700;}
   .summary-grid .stat .l{font-size:11px; color:var(--muted); margin-top:2px;}
 
   .empty{text-align:center; color:var(--muted); font-size:13px; padding:24px 0;}
   .toast{position:fixed; left:50%; bottom:90px; transform:translateX(-50%); background:var(--gold); color:#241B07;
-    padding:10px 16px; border-radius:10px; font-size:13px; font-weight:600; opacity:0; transition:opacity .3s; z-index:99;}
+    padding:10px 16px; border-radius:10px; font-size:13px; font-weight:600; opacity:0; transition:opacity .3s; z-index:99; max-width:86%; text-align:center;}
   .toast.show{opacity:1;}
 </style>
 </head>
@@ -114,11 +101,16 @@
 
 <header>
   <div class="brand">
-    <h1>USD · KRW</h1>
+    <h1 id="ccyTitle">USD · KRW</h1>
     <span class="clock" id="clock">--:--</span>
   </div>
+  <div class="ccy-tabs">
+    <button class="active" data-ccy="USD" onclick="switchCcy('USD')">달러</button>
+    <button data-ccy="JPY" onclick="switchCcy('JPY')">엔화</button>
+    <button data-ccy="CNY" onclick="switchCcy('CNY')">위안화</button>
+  </div>
   <div class="ticker">
-    <span class="unit">₩</span>
+    <span class="unit" id="rateUnit">1달러 ₩</span>
     <span class="rate" id="rateMain">----.--</span>
     <span class="delta" id="rateDelta">·</span>
   </div>
@@ -126,7 +118,6 @@
 
 <main>
 
-  <!-- 환율 -->
   <section class="view active" id="view-rate">
     <div class="card" style="margin-bottom:14px;">
       <div class="label">매수 적합성 — 평균 대비 갭</div>
@@ -138,12 +129,11 @@
     </div>
   </section>
 
-  <!-- 매매기록 -->
   <section class="view" id="view-trade">
     <div class="card" style="margin-bottom:14px;">
-      <div class="label">평가 현황</div>
+      <div class="label" id="sumLabel">평가 현황 — 달러</div>
       <div class="summary-grid">
-        <div class="stat"><div class="v" id="sumHoldUsd">$0</div><div class="l">보유 달러</div></div>
+        <div class="stat"><div class="v" id="sumHold">0</div><div class="l" id="sumHoldLabel">보유 외화</div></div>
         <div class="stat"><div class="v" id="sumAvgRate">-</div><div class="l">평균 매수환율</div></div>
         <div class="stat"><div class="v" id="sumInvestKrw">₩0</div><div class="l">투입 원화</div></div>
         <div class="stat"><div class="v" id="sumPnl">₩0</div><div class="l">평가손익</div></div>
@@ -157,8 +147,9 @@
         <input type="date" id="tDate">
       </div>
       <div class="form-row">
-        <input type="number" id="tUsd" placeholder="달러 금액 (USD)">
-        <input type="number" id="tRate" placeholder="환율 (₩)" step="0.01">
+        <input type="number" id="tAmt" placeholder="외화 금액">
+        <input type="number" id="tRate" placeholder="환율 (1단위당 ₩)" step="0.0001">
+        <button class="fillrate" onclick="fillCurrentRate()">현재가</button>
       </div>
       <button class="primary" onclick="addTrade()">기록 저장</button>
     </div>
@@ -169,17 +160,16 @@
     </div>
   </section>
 
-  <!-- 알림/설정 -->
   <section class="view" id="view-alert">
     <div class="card" style="margin-bottom:14px;">
-      <div class="label">목표 환율 알림</div>
+      <div class="label" id="alertLabel">목표 환율 알림 — 달러</div>
       <div class="form-row">
-        <input type="number" id="alertRate" placeholder="목표 환율 (예: 1320)" step="0.1">
+        <input type="number" id="alertRate" placeholder="목표 환율 (1단위당 ₩)" step="0.0001">
         <select id="alertDir"><option value="below">이하로 떨어지면</option><option value="above">이상으로 오르면</option></select>
       </div>
       <button class="primary" onclick="saveAlert()">알림 설정 저장</button>
       <p style="font-size:12px; color:var(--muted); margin-top:10px; line-height:1.5;">
-        앱을 열어둔 상태에서만 동작해요. 브라우저 알림 권한을 허용하면 앱이 백그라운드여도 알림이 떠요.
+        앱을 열어둔 상태에서만 동작해요. 브라우저 알림 권한을 허용하면 백그라운드에서도 알림이 떠요. 통화별로 각각 설정돼요.
       </p>
     </div>
     <div class="card" id="alertStatus" style="display:none;">
@@ -201,11 +191,17 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
-let chartInstance = null;
-let lastRate = null;
-let avg60 = null, avg120 = null;
 
-/* ---------- 탭 전환 ---------- */
+const CCY = {
+  USD: { name:'달러', symbol:'$', unitLabel:'1달러 ₩', mult:1, decimals:2 },
+  JPY: { name:'엔화', symbol:'¥', unitLabel:'100엔 ₩', mult:100, decimals:2 },
+  CNY: { name:'위안화', symbol:'¥', unitLabel:'1위안 ₩', mult:1, decimals:2 },
+};
+let currentCcy = 'USD';
+let ratesData = {}; // { USD: {labels, values, current, prev, avg60, avg120}, ... }
+let chartInstance = null;
+
+/* ---------- 탭 전환 (하단 네비) ---------- */
 document.querySelectorAll('nav.tabs button').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
@@ -215,80 +211,96 @@ document.querySelectorAll('nav.tabs button').forEach(btn=>{
   });
 });
 
-/* ---------- 시계 ---------- */
-function tickClock(){
-  const d = new Date();
-  $('clock').textContent = d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+/* ---------- 통화 전환 ---------- */
+function switchCcy(ccy){
+  currentCcy = ccy;
+  document.querySelectorAll('.ccy-tabs button').forEach(b=>b.classList.toggle('active', b.dataset.ccy===ccy));
+  const meta = CCY[ccy];
+  $('ccyTitle').textContent = `${ccy} · KRW`;
+  $('rateUnit').textContent = meta.unitLabel;
+  $('sumLabel').textContent = `평가 현황 — ${meta.name}`;
+  $('sumHoldLabel').textContent = `보유 ${meta.name}`;
+  $('alertLabel').textContent = `목표 환율 알림 — ${meta.name}`;
+  renderFromCache();
+  renderTrades();
+  renderAlertStatus();
 }
+
+/* ---------- 시계 ---------- */
+function tickClock(){ $('clock').textContent = new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}); }
 setInterval(tickClock, 1000); tickClock();
 
 /* ---------- 토스트 ---------- */
 function toast(msg){
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2600);
+  setTimeout(()=>t.classList.remove('show'), 3000);
 }
 
-/* ---------- 환율 데이터 (frankfurter.app, 키 불필요) ---------- */
+/* ---------- 환율 데이터: api.frankfurter.dev, base=KRW로 한 번에 3개 통화 ---------- */
 function fmtDate(d){ return d.toISOString().slice(0,10); }
+function average(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
 
 async function loadRates(){
   try{
     const today = new Date();
     const start = new Date(); start.setDate(start.getDate()-130);
-    const url = `https://api.frankfurter.app/${fmtDate(start)}..${fmtDate(today)}?from=USD&to=KRW`;
+    const url = `https://api.frankfurter.dev/v1/${fmtDate(start)}..${fmtDate(today)}?base=KRW&symbols=USD,JPY,CNY`;
     const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const entries = Object.entries(data.rates).sort((a,b)=> a[0] < b[0] ? -1 : 1);
-    const values = entries.map(e => e[1].KRW);
     const labels = entries.map(e => e[0].slice(5));
 
-    const current = values[values.length-1];
-    const prev = values[values.length-2] ?? current;
-    lastRate = current;
+    ['USD','JPY','CNY'].forEach(ccy=>{
+      // KRW 기준 rate(예: 1KRW = 0.00072 USD) -> 1 외화당 KRW = 1/rate
+      const values = entries.map(e => 1 / e[1][ccy]);
+      const current = values[values.length-1];
+      const prev = values[values.length-2] ?? current;
+      ratesData[ccy] = {
+        labels, values, current, prev,
+        avg60: average(values.slice(-60)),
+        avg120: average(values.slice(-120)),
+      };
+      checkAlert(ccy, current);
+    });
 
-    avg60 = average(values.slice(-60));
-    avg120 = average(values.slice(-120));
-
-    renderTicker(current, prev);
-    renderGap(current, avg60, avg120);
-    renderChart(labels.slice(-90), values.slice(-90), avg60);
-    checkAlert(current);
+    renderFromCache();
   }catch(e){
+    console.error('환율 로딩 실패:', e);
     $('rateMain').textContent = '오류';
-    toast('환율 데이터를 불러오지 못했어요');
+    toast('환율 데이터를 불러오지 못했어요 (' + e.message + ')');
   }
 }
-function average(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
 
-function renderTicker(current, prev){
-  $('rateMain').textContent = current.toFixed(2);
-  const diff = current - prev;
+function renderFromCache(){
+  const d = ratesData[currentCcy];
+  if (!d) return;
+  const meta = CCY[currentCcy];
+  renderTicker(d.current, d.prev, meta);
+  renderGap(d.current, d.avg60, d.avg120, meta);
+  renderChart(d.labels.slice(-90), d.values.slice(-90), d.avg60, meta);
+  renderSummary(getTrades().filter(t=>t.ccy===currentCcy));
+}
+
+function renderTicker(current, prev, meta){
+  $('rateMain').textContent = (current*meta.mult).toFixed(meta.decimals);
+  const diff = (current - prev) * meta.mult;
   const el = $('rateDelta');
-  if (diff >= 0){
-    el.textContent = `▲ ${diff.toFixed(2)}`;
-    el.className = 'delta up';
-  } else {
-    el.textContent = `▼ ${Math.abs(diff).toFixed(2)}`;
-    el.className = 'delta down';
-  }
+  if (diff >= 0){ el.textContent = `▲ ${diff.toFixed(meta.decimals)}`; el.className = 'delta up'; }
+  else { el.textContent = `▼ ${Math.abs(diff).toFixed(meta.decimals)}`; el.className = 'delta down'; }
 }
 
-function renderGap(current, a60, a120){
-  const rows = [
-    {name:'60일 평균', avg:a60},
-    {name:'120일 평균', avg:a120},
-  ];
+function renderGap(current, a60, a120, meta){
+  const rows = [{name:'60일 평균', avg:a60}, {name:'120일 평균', avg:a120}];
   $('gapRows').innerHTML = rows.map(r=>{
     const gap = ((current - r.avg) / r.avg) * 100;
-    const favor = gap <= 0; // 평균보다 싸면 매수 유리
-    const pct = Math.max(-100, Math.min(100, gap * 8)); // 게이지 시각화 스케일
-    const fillStyle = pct >= 0
-      ? `left:50%; width:${Math.abs(pct)/2}%;`
-      : `left:${50 - Math.abs(pct)/2}%; width:${Math.abs(pct)/2}%;`;
+    const favor = gap <= 0;
+    const pct = Math.max(-100, Math.min(100, gap * 8));
+    const fillStyle = pct >= 0 ? `left:50%; width:${Math.abs(pct)/2}%;` : `left:${50 - Math.abs(pct)/2}%; width:${Math.abs(pct)/2}%;`;
     return `
       <div class="gap-row">
         <div style="flex:1;">
-          <div class="name">${r.name} (₩${r.avg.toFixed(1)})</div>
+          <div class="name">${r.name} (₩${(r.avg*meta.mult).toFixed(meta.decimals)})</div>
           <div class="gap-wrap" style="margin-top:6px;">
             <div class="gap-meter"><div class="gap-mid"></div><div class="gap-fill ${favor?'favor':'unfavor'}" style="${fillStyle}"></div></div>
           </div>
@@ -301,20 +313,16 @@ function renderGap(current, a60, a120){
   }).join('');
 }
 
-function renderChart(labels, values, avg){
+function renderChart(labels, values, avg, meta){
   const ctx = $('chart').getContext('2d');
   if (chartInstance) chartInstance.destroy();
   chartInstance = new Chart(ctx, {
     type:'line',
-    data:{
-      labels,
-      datasets:[
-        { data:values, borderColor:'#34D399', borderWidth:2, pointRadius:0, tension:.25, fill:false },
-        { data:labels.map(()=>avg), borderColor:'#7C8AA3', borderWidth:1, borderDash:[4,4], pointRadius:0 }
-      ]
-    },
-    options:{
-      plugins:{legend:{display:false}},
+    data:{ labels, datasets:[
+      { data:values.map(v=>v*meta.mult), borderColor:'#34D399', borderWidth:2, pointRadius:0, tension:.25, fill:false },
+      { data:labels.map(()=>avg*meta.mult), borderColor:'#7C8AA3', borderWidth:1, borderDash:[4,4], pointRadius:0 }
+    ]},
+    options:{ plugins:{legend:{display:false}},
       scales:{
         x:{ticks:{color:'#7C8AA3', maxTicksLimit:6, font:{size:10}}, grid:{color:'#1E2C45'}},
         y:{ticks:{color:'#7C8AA3', font:{size:10}}, grid:{color:'#1E2C45'}}
@@ -323,46 +331,57 @@ function renderChart(labels, values, avg){
   });
 }
 
-/* ---------- 매매기록 (localStorage) ---------- */
-function getTrades(){ return JSON.parse(localStorage.getItem('dt_trades') || '[]'); }
-function setTrades(t){ localStorage.setItem('dt_trades', JSON.stringify(t)); }
+/* ---------- 매매기록 (통화별, localStorage) ---------- */
+function getTrades(){ return JSON.parse(localStorage.getItem('dt_trades_v2') || '[]'); }
+function setTrades(t){ localStorage.setItem('dt_trades_v2', JSON.stringify(t)); }
+
+function fillCurrentRate(){
+  const d = ratesData[currentCcy];
+  if (!d){ toast('환율을 아직 불러오는 중이에요'); return; }
+  $('tRate').value = d.current.toFixed(4);
+}
 
 function addTrade(){
   const type = $('tType').value;
   const date = $('tDate').value || fmtDate(new Date());
-  const usd = parseFloat($('tUsd').value);
+  const amt = parseFloat($('tAmt').value);
   const rate = parseFloat($('tRate').value);
-  if (!usd || !rate){ toast('금액과 환율을 입력해주세요'); return; }
+  if (!amt || !rate){ toast('금액과 환율을 입력해주세요'); return; }
   const trades = getTrades();
-  trades.push({type, date, usd, rate, krw: usd*rate});
+  trades.push({ccy:currentCcy, type, date, amt, rate, krw: amt*rate});
   setTrades(trades);
-  $('tUsd').value=''; $('tRate').value='';
+  $('tAmt').value=''; $('tRate').value='';
   renderTrades();
   toast('기록을 저장했어요');
 }
 
-function deleteTrade(idx){
-  const trades = getTrades();
-  trades.splice(idx,1);
-  setTrades(trades);
+function deleteTradeById(id){
+  setTrades(getTrades().filter(t=>t.id!==id));
   renderTrades();
 }
 
 function renderTrades(){
-  const trades = getTrades().sort((a,b)=> a.date < b.date ? 1 : -1);
+  const all = getTrades();
+  // 이전 기록에 id가 없으면 부여 (마이그레이션)
+  let changed = false;
+  all.forEach(t=>{ if(!t.id){ t.id = Math.random().toString(36).slice(2); changed = true; } });
+  if (changed) setTrades(all);
+
+  const trades = all.filter(t=>t.ccy===currentCcy).sort((a,b)=> a.date < b.date ? 1 : -1);
   const wrap = $('tradeTableWrap');
+  const meta = CCY[currentCcy];
   if (trades.length === 0){
     wrap.innerHTML = '<div class="empty">아직 기록이 없어요</div>';
   } else {
     wrap.innerHTML = `<table>
-      <tr><th>날짜</th><th>구분</th><th>USD</th><th>환율</th><th></th></tr>
-      ${trades.map((t,i)=>`
+      <tr><th>날짜</th><th>구분</th><th>금액</th><th>환율</th><th></th></tr>
+      ${trades.map(t=>`
         <tr>
           <td>${t.date}</td>
           <td class="${t.type}">${t.type==='buy'?'매수':'매도'}</td>
-          <td>$${t.usd.toLocaleString()}</td>
-          <td>₩${t.rate.toFixed(2)}</td>
-          <td><span class="ghost" style="cursor:pointer;" onclick="deleteTrade(${getTrades().sort((a,b)=> a.date < b.date ? 1 : -1).indexOf(t)})">✕</span></td>
+          <td>${meta.symbol}${t.amt.toLocaleString()}</td>
+          <td>₩${t.rate.toFixed(4)}</td>
+          <td><span class="ghost" style="cursor:pointer;" onclick="deleteTradeById('${t.id}')">✕</span></td>
         </tr>`).join('')}
     </table>`;
   }
@@ -370,61 +389,68 @@ function renderTrades(){
 }
 
 function renderSummary(trades){
+  const meta = CCY[currentCcy];
   const buys = trades.filter(t=>t.type==='buy');
   const sells = trades.filter(t=>t.type==='sell');
-  const buyUsd = buys.reduce((a,t)=>a+t.usd,0);
-  const sellUsd = sells.reduce((a,t)=>a+t.usd,0);
+  const buyAmt = buys.reduce((a,t)=>a+t.amt,0);
+  const sellAmt = sells.reduce((a,t)=>a+t.amt,0);
   const buyKrw = buys.reduce((a,t)=>a+t.krw,0);
-  const holdUsd = buyUsd - sellUsd;
-  const avgRate = buyUsd ? (buyKrw/buyUsd) : 0;
-  const sellMatchedKrw = sellUsd * avgRate; // FIFO 단순화: 평균매입가 기준
+  const holdAmt = buyAmt - sellAmt;
+  const avgRate = buyAmt ? (buyKrw/buyAmt) : 0;
+  const sellMatchedKrw = sellAmt * avgRate;
   const investKrw = buyKrw - sellMatchedKrw;
-  const currentValueKrw = holdUsd * (lastRate || avgRate);
+  const liveRate = (ratesData[currentCcy] && ratesData[currentCcy].current) || avgRate;
+  const currentValueKrw = holdAmt * liveRate;
   const pnl = currentValueKrw - investKrw;
 
-  $('sumHoldUsd').textContent = `$${holdUsd.toLocaleString(undefined,{maximumFractionDigits:2})}`;
-  $('sumAvgRate').textContent = avgRate ? `₩${avgRate.toFixed(2)}` : '-';
+  $('sumHold').textContent = `${meta.symbol}${holdAmt.toLocaleString(undefined,{maximumFractionDigits:2})}`;
+  $('sumAvgRate').textContent = avgRate ? `₩${avgRate.toFixed(4)}` : '-';
   $('sumInvestKrw').textContent = `₩${Math.round(investKrw).toLocaleString()}`;
   const pnlEl = $('sumPnl');
   pnlEl.textContent = `${pnl>=0?'+':''}₩${Math.round(pnl).toLocaleString()}`;
   pnlEl.style.color = pnl>=0 ? 'var(--green)' : 'var(--orange)';
 }
 
-/* ---------- 알림 ---------- */
-function getAlert(){ return JSON.parse(localStorage.getItem('dt_alert') || 'null'); }
+/* ---------- 알림 (통화별) ---------- */
+function getAlerts(){ return JSON.parse(localStorage.getItem('dt_alerts_v2') || '{}'); }
+function setAlerts(a){ localStorage.setItem('dt_alerts_v2', JSON.stringify(a)); }
+
 function saveAlert(){
   const rate = parseFloat($('alertRate').value);
   const dir = $('alertDir').value;
   if (!rate){ toast('목표 환율을 입력해주세요'); return; }
-  localStorage.setItem('dt_alert', JSON.stringify({rate, dir, fired:false}));
-  if ('Notification' in window && Notification.permission === 'default'){
-    Notification.requestPermission();
-  }
+  const alerts = getAlerts();
+  alerts[currentCcy] = {rate, dir, fired:false};
+  setAlerts(alerts);
+  if ('Notification' in window && Notification.permission === 'default'){ Notification.requestPermission(); }
   renderAlertStatus();
   toast('알림을 설정했어요');
 }
 function clearAlert(){
-  localStorage.removeItem('dt_alert');
+  const alerts = getAlerts();
+  delete alerts[currentCcy];
+  setAlerts(alerts);
   renderAlertStatus();
 }
 function renderAlertStatus(){
-  const a = getAlert();
+  const a = getAlerts()[currentCcy];
   const box = $('alertStatus');
   if (!a){ box.style.display='none'; return; }
   box.style.display='block';
-  $('alertText').textContent = `₩${a.rate} ${a.dir==='below'?'이하로 떨어지면':'이상으로 오르면'} 알림`;
+  $('alertText').textContent = `₩${a.rate} ${a.dir==='below'?'이하로 떨어지면':'이상으로 오르면'} 알림 (${CCY[currentCcy].name})`;
 }
-function checkAlert(current){
-  const a = getAlert();
+function checkAlert(ccy, current){
+  const alerts = getAlerts();
+  const a = alerts[ccy];
   if (!a || a.fired) return;
   const hit = a.dir==='below' ? current <= a.rate : current >= a.rate;
   if (hit){
-    toast(`🔔 목표 환율 도달! 현재 ₩${current.toFixed(2)}`);
+    toast(`🔔 ${CCY[ccy].name} 목표 환율 도달! 현재 ₩${current.toFixed(4)}`);
     if ('Notification' in window && Notification.permission === 'granted'){
-      new Notification('달러트래커', {body:`목표 환율(₩${a.rate}) 도달! 현재 ₩${current.toFixed(2)}`});
+      new Notification('환율트래커', {body:`${CCY[ccy].name} 목표 환율(₩${a.rate}) 도달! 현재 ₩${current.toFixed(4)}`});
     }
     a.fired = true;
-    localStorage.setItem('dt_alert', JSON.stringify(a));
+    setAlerts(alerts);
   }
 }
 
@@ -433,7 +459,7 @@ $('tDate').value = fmtDate(new Date());
 renderTrades();
 renderAlertStatus();
 loadRates();
-setInterval(loadRates, 5 * 60 * 1000); // 5분마다 갱신
+setInterval(loadRates, 5 * 60 * 1000);
 </script>
 
 </body>
