@@ -240,7 +240,10 @@ function toast(msg){
 function fmtDate(d){ return d.toISOString().slice(0,10); }
 function average(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
 
-async function loadRates(){
+let lastLive = {}; // 직전 poll 값 (실시간 변동 표시용)
+
+// 차트/60·120일 평균용 — 일별 데이터라 자주 안 바뀌어도 정상
+async function loadHistorical(){
   try{
     const today = new Date();
     const start = new Date(); start.setDate(start.getDate()-130);
@@ -252,23 +255,44 @@ async function loadRates(){
     const labels = entries.map(e => e[0].slice(5));
 
     ['USD','JPY','CNY'].forEach(ccy=>{
-      // KRW 기준 rate(예: 1KRW = 0.00072 USD) -> 1 외화당 KRW = 1/rate
       const values = entries.map(e => 1 / e[1][ccy]);
-      const current = values[values.length-1];
-      const prev = values[values.length-2] ?? current;
-      ratesData[ccy] = {
-        labels, values, current, prev,
-        avg60: average(values.slice(-60)),
-        avg120: average(values.slice(-120)),
-      };
-      checkAlert(ccy, current);
+      if (!ratesData[ccy]) ratesData[ccy] = {};
+      ratesData[ccy].labels = labels;
+      ratesData[ccy].values = values;
+      ratesData[ccy].avg60 = average(values.slice(-60));
+      ratesData[ccy].avg120 = average(values.slice(-120));
+      if (ratesData[ccy].current === undefined) ratesData[ccy].current = values[values.length-1];
+      if (ratesData[ccy].prev === undefined) ratesData[ccy].prev = values[values.length-2] ?? values[values.length-1];
     });
-
     renderFromCache();
   }catch(e){
-    console.error('환율 로딩 실패:', e);
-    $('rateMain').textContent = '오류';
-    toast('환율 데이터를 불러오지 못했어요 (' + e.message + ')');
+    console.error('차트 데이터 로딩 실패:', e);
+  }
+}
+
+// 시간당 갱신되는 실시간성 시세 — 티커/딜타/알림 체크용
+async function loadLive(){
+  try{
+    const res = await fetch('https://api.exchangerate.fun/latest?base=USD');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const r = data.rates;
+    const live = { USD: r.KRW, JPY: r.KRW / r.JPY, CNY: r.KRW / r.CNY };
+
+    ['USD','JPY','CNY'].forEach(ccy=>{
+      if (!ratesData[ccy]) ratesData[ccy] = {};
+      ratesData[ccy].prev = (lastLive[ccy] !== undefined) ? lastLive[ccy] : live[ccy];
+      ratesData[ccy].current = live[ccy];
+      checkAlert(ccy, live[ccy]);
+    });
+    lastLive = live;
+    renderFromCache();
+  }catch(e){
+    console.error('실시간 시세 로딩 실패:', e);
+    if (ratesData[currentCcy] === undefined || ratesData[currentCcy].current === undefined){
+      $('rateMain').textContent = '오류';
+      toast('실시간 시세를 불러오지 못했어요 (' + e.message + ')');
+    }
   }
 }
 
@@ -458,8 +482,10 @@ function checkAlert(ccy, current){
 $('tDate').value = fmtDate(new Date());
 renderTrades();
 renderAlertStatus();
-loadRates();
-setInterval(loadRates, 5 * 60 * 1000);
+loadHistorical();
+loadLive();
+setInterval(loadLive, 3 * 60 * 1000);       // 실시간성 시세: 3분마다
+setInterval(loadHistorical, 60 * 60 * 1000); // 차트/평균: 1시간마다
 </script>
 
 </body>
