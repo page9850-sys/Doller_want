@@ -92,6 +92,16 @@
   .summary-grid .stat .l{font-size:11px; color:var(--muted); margin-top:2px;}
 
   .empty{text-align:center; color:var(--muted); font-size:13px; padding:24px 0;}
+
+  .bank-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;}
+  .bank-stat{background:var(--bg); border-radius:10px; padding:12px;}
+  .bank-stat .v{font-family:var(--mono); font-size:18px; font-weight:700;}
+  .bank-stat .l{font-size:11px; color:var(--muted); margin-top:2px;}
+  .bank-stat.buy .v{color:var(--orange);}
+  .bank-stat.sell .v{color:var(--green);}
+  .spread-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0 0; border-top:1px solid var(--line); margin-top:4px;}
+  .spread-row .name{font-size:12px; color:var(--muted);}
+  .spread-row .v{font-family:var(--mono); font-size:15px; font-weight:700; color:var(--gold);}
   .toast{position:fixed; left:50%; bottom:90px; transform:translateX(-50%); background:var(--gold); color:#241B07;
     padding:10px 16px; border-radius:10px; font-size:13px; font-weight:600; opacity:0; transition:opacity .3s; z-index:99; max-width:86%; text-align:center;}
   .toast.show{opacity:1;}
@@ -123,9 +133,13 @@
       <div class="label">매수 적합성 — 평균 대비 갭</div>
       <div id="gapRows"></div>
     </div>
-    <div class="card">
+    <div class="card" style="margin-bottom:14px;">
       <div class="label">90일 추이</div>
       <canvas id="chart"></canvas>
+    </div>
+    <div class="card">
+      <div class="label">은행 환전 고시 (수출입은행 기준) <span id="bankAsOf" style="color:var(--muted); text-transform:none; font-weight:400;"></span></div>
+      <div id="bankRateBox"><div class="empty">불러오는 중...</div></div>
     </div>
   </section>
 
@@ -224,6 +238,7 @@ function switchCcy(ccy){
   renderFromCache();
   renderTrades();
   renderAlertStatus();
+  renderBankRates();
 }
 
 /* ---------- 시계 ---------- */
@@ -478,14 +493,93 @@ function checkAlert(ccy, current){
   }
 }
 
-/* ---------- 초기화 ---------- */
+/* ---------- 은행 환전 고시 (한국수출입은행 OpenAPI) ---------- */
+const EXIM_AUTHKEY = 'bVbvJzrUXlEeeo63X1ETiUVB5hOqanKt';
+const EXIM_CCY_MAP = { USD:['USD'], JPY:['JPY(100)'], CNY:['CNH','CNY'] };
+let bankData = {}; // { USD: {ttb, tts, deal_bas_r}, ... }
+
+function eximUrl(dateStr){
+  return `https://oapi.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey=${EXIM_AUTHKEY}&searchdate=${dateStr}&data=AP01`;
+}
+function toNum(s){ return parseFloat(String(s).replace(/,/g,'')); }
+
+async function fetchExim(dateStr){
+  const direct = eximUrl(dateStr);
+  try{
+    const res = await fetch(direct);
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    return await res.json();
+  }catch(e){
+    // CORS 등으로 직접 호출 실패 시 무료 중계 프록시로 재시도
+    const proxied = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(direct);
+    const res2 = await fetch(proxied);
+    if (!res2.ok) throw new Error('proxy HTTP '+res2.status);
+    return await res2.json();
+  }
+}
+
+async function loadBankRates(){
+  try{
+    let d = new Date();
+    let json = null;
+    for (let i=0; i<6; i++){
+      const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+      const data = await fetchExim(dateStr);
+      if (Array.isArray(data) && data.length > 0 && data[0].result === 1){
+        json = data; bankAsOfDate = dateStr; break;
+      }
+      d.setDate(d.getDate()-1); // 결과 없으면(주말/휴일) 하루 전으로
+    }
+    if (!json){ throw new Error('최근 거래일 데이터 없음'); }
+
+    ['USD','JPY','CNY'].forEach(ccy=>{
+      const row = json.find(r => EXIM_CCY_MAP[ccy].includes(r.cur_unit));
+      if (row){
+        bankData[ccy] = { ttb: toNum(row.ttb), tts: toNum(row.tts), base: toNum(row.deal_bas_r) };
+      }
+    });
+    $('bankAsOf').textContent = bankAsOfDate ? `(${bankAsOfDate.slice(0,4)}.${bankAsOfDate.slice(4,6)}.${bankAsOfDate.slice(6,8)} 고시)` : '';
+    renderBankRates();
+  }catch(e){
+    console.error('은행 환율 로딩 실패:', e);
+    $('bankRateBox').innerHTML = `<div class="empty">은행 환율을 불러오지 못했어요<br><span style="font-size:11px;">${e.message}</span></div>`;
+  }
+}
+let bankAsOfDate = null;
+
+function renderBankRates(){
+  const b = bankData[currentCcy];
+  const box = $('bankRateBox');
+  if (!b){ box.innerHTML = '<div class="empty">해당 통화 데이터가 없어요</div>'; return; }
+  const spread = b.tts - b.ttb;
+  const spreadPct = (spread / b.base) * 100;
+  box.innerHTML = `
+    <div class="bank-grid">
+      <div class="bank-stat buy"><div class="v">₩${b.tts.toFixed(2)}</div><div class="l">살 때 (보내실 때)</div></div>
+      <div class="bank-stat sell"><div class="v">₩${b.ttb.toFixed(2)}</div><div class="l">팔 때 (받으실 때)</div></div>
+    </div>
+    <div class="bank-grid" style="grid-template-columns:1fr;">
+      <div class="bank-stat"><div class="v" style="color:var(--text);">₩${b.base.toFixed(2)}</div><div class="l">매매기준율</div></div>
+    </div>
+    <div class="spread-row">
+      <span class="name">스프레드 (살때-팔때)</span>
+      <span class="v">₩${spread.toFixed(2)} (${spreadPct.toFixed(2)}%)</span>
+    </div>
+    <p style="font-size:11px; color:var(--muted); margin:10px 0 0; line-height:1.5;">
+      전신환(송금) 기준이에요. 영업점 현찰 환전은 스프레드가 더 넓을 수 있어요.
+    </p>`;
+}
+
+
 $('tDate').value = fmtDate(new Date());
 renderTrades();
 renderAlertStatus();
 loadHistorical();
 loadLive();
+loadBankRates();
 setInterval(loadLive, 3 * 60 * 1000);       // 실시간성 시세: 3분마다
 setInterval(loadHistorical, 60 * 60 * 1000); // 차트/평균: 1시간마다
+setInterval(loadBankRates, 10 * 60 * 1000);  // 은행 고시 환율: 10분마다
 </script>
 
 </body>
